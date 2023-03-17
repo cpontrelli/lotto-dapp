@@ -77,17 +77,21 @@ export class AppComponent {
     // Request the signer to connect
     this.provider.send("eth_requestAccounts", []).then(() => {
       this.signer = this.provider.getSigner();
-      // query account balance
-      this.signer.getBalance().then((balanceBN) => {
-        const balanceStr = utils.formatEther(balanceBN);
-        this.userBalance = parseFloat(balanceStr);
-      });
+      this.getUserEthBalance();
       // get the signer address
       this.signer.getAddress().then((address) => {
         this.userAddress = address;
         // query LTO balance
         this.getUserTokenBalance(); 
       });
+    });
+  }
+
+  getUserEthBalance() {
+    if(!this.signer) return;
+    this.signer.getBalance().then((balanceBN) => {
+      const balanceStr = utils.formatEther(balanceBN);
+      this.userBalance = parseFloat(balanceStr);
     });
   }
 
@@ -106,8 +110,26 @@ export class AppComponent {
     }).then((tx: ethers.ContractTransaction) => {
       tx.wait().then((receipt: ethers.ContractReceipt) => {
         this.getUserTokenBalance();
-      })
-    })   
+      });
+    });
+  }
+
+  returnTokens(amount: string) {
+    const tokens = parseFloat(amount);
+    if(Number.isNaN(tokens) || tokens <= 0 || !this.signer) return;
+    this.tokenContract?.connect(this.signer)['approve'](this.lotteryContractAddress, ethers.utils.parseEther(amount))
+      .then(((approveTx: ethers.ContractTransaction) => {
+        approveTx.wait().then((receipt: ethers.ContractReceipt) => {
+          if(!this.signer) return;  
+          this.lotteryContract?.connect(this.signer)['returnTokens'](ethers.utils.parseEther(amount))
+            .then((returnTx: ethers.ContractTransaction) => {
+              returnTx.wait().then((receipt: ethers.ContractReceipt) => {
+                this.getUserEthBalance();
+                this.getUserTokenBalance();
+              });
+            });
+        });
+      }));  
   }
 
 }

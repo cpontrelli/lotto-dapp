@@ -16,6 +16,12 @@
             <br>
             <button class="btn btn-danger btn-lg px-4 gap-3" (click)="purchaseTokens(valueInput.value)">Purchase</button>
           </div>
+          <div *ngIf="userTokenBalance && userTokenBalance >= 0">
+            <p>Return Tokens:</p>
+            <input #valueInput class="input" type="number" min="0" max="{{userTokenBalance}}" />
+            <br>
+            <button class="btn btn-success btn-lg px-4 gap-3" (click)="returnTokens(valueInput.value)">Return</button>
+          </div>
         </div>
       </div>
     </div>
