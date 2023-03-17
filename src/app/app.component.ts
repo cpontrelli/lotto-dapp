@@ -1,7 +1,8 @@
 import { Component } from '@angular/core';
 import { BigNumber, Contract, ethers, utils } from 'ethers';
 import { ExternalProvider } from "@ethersproject/providers";
-//import contractJson from "../assets/MyToken.json";
+import lotteryJson from "../assets/Lottery.json";
+import tokenJson from "../assets/LotteryToken.json";
 
 const LOTTERY_ADDRESS = '0xAF61e280930221c6584F23bFf29E1ea8e98a94e6';
 const TOKEN_ADDRESS = '0xE4d7972Ac450948F1a6DCB29DCf3281232C718b3';
@@ -41,19 +42,25 @@ export class AppComponent {
     this.provider.getBlock('latest').then((block) => {
       this.blockNumber = block.number;
     });
-    this.getTokenInfo();
+    this.getTokenContract();
   }
   
-  getTokenInfo() {
-    // if (!this.tokenContractAddress) return;
-    // this.tokenContract = new Contract(
-    //   this.tokenContractAddress,
-    //   tokenJson.abi,
-    //   this.signer ?? this.provider
-    // )
-    // this.tokenContract['totalSupply']().then((tokenSupplyBN: BigNumber) => {
-    //   const tokenSupplyStr = utils.formatEther(tokenSupplyBN);
-    // });
+  getTokenContract() {
+    if (!this.tokenContractAddress) return;
+    this.tokenContract = new Contract(
+      this.tokenContractAddress,
+      tokenJson.abi,
+      this.signer ?? this.provider
+    );
+  }
+
+  getLottoContract() {
+    if (!this.lotteryContractAddress) return;
+    this.lotteryContract = new Contract(
+      this.lotteryContractAddress,
+      lotteryJson.abi,
+      this.signer ?? this.provider
+    );
   }
 
   clearBlock() {
@@ -72,12 +79,16 @@ export class AppComponent {
       // get the signer address
       this.signer.getAddress().then((address) => {
         this.userAddress = address;
-        // query LTO balance 
-        // this.tokenContract?.['balanceOf'](this.userAddress).then((tokenBalanceBN: BigNumber) => {
-        //   const tokenBalaceStr = utils.formatEther(tokenBalanceBN);
-        //   this.userTokenBalance = parseFloat(tokenBalaceStr);
-        // });
+        // query LTO balance
+        this.getUserTokenBalance(); 
       });
+    });
+  }
+
+  getUserTokenBalance() {
+    this.tokenContract?.['balanceOf'](this.userAddress).then((tokenBalanceBN: BigNumber) => {
+      const tokenBalaceStr = utils.formatEther(tokenBalanceBN);
+      this.userTokenBalance = parseFloat(tokenBalaceStr);
     });
   }
   
