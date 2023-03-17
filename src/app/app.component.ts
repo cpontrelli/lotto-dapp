@@ -4,8 +4,8 @@ import { ExternalProvider } from "@ethersproject/providers";
 import lotteryJson from "../assets/Lottery.json";
 import tokenJson from "../assets/LotteryToken.json";
 
-const LOTTERY_ADDRESS = '0xAF61e280930221c6584F23bFf29E1ea8e98a94e6';
-const TOKEN_ADDRESS = '0xE4d7972Ac450948F1a6DCB29DCf3281232C718b3';
+const LOTTERY_ADDRESS = '0x21cdb3376F8a76EEa8bcB4E210Ca0c8e0916244f';
+const TOKEN_ADDRESS = '0x177B4B42D37ae2e0691965f57669347f4F0A50d4';
 
 // Metamask will inject the ethereum object to DOM
 declare global {
@@ -30,6 +30,7 @@ export class AppComponent {
   tokenContract: Contract | undefined;
   lotteryContractAddress: string | undefined;
   lotteryContract: Contract | undefined;
+  tokenRatio: number | undefined;
   
   constructor() {
     this.provider = new ethers.providers.Web3Provider(window.ethereum, 'goerli');
@@ -43,6 +44,7 @@ export class AppComponent {
       this.blockNumber = block.number;
     });
     this.getTokenContract();
+    this.getLottoContract();
   }
   
   getTokenContract() {
@@ -61,6 +63,10 @@ export class AppComponent {
       lotteryJson.abi,
       this.signer ?? this.provider
     );
+    this.lotteryContract?.['purchaseRatio']().then((tokenRatioBN: BigNumber) => {
+      const tokenRatioStr = tokenRatioBN.toString();
+      this.tokenRatio = parseFloat(tokenRatioStr);
+    });
   }
 
   clearBlock() {
@@ -91,5 +97,17 @@ export class AppComponent {
       this.userTokenBalance = parseFloat(tokenBalaceStr);
     });
   }
-  
+
+  purchaseTokens(amount: string) {
+    const tokens = parseFloat(amount);
+    if(Number.isNaN(tokens) || tokens <= 0 || !this.signer || !this.tokenRatio) return;
+    this.lotteryContract?.connect(this.signer)['purchaseTokens']({
+      value: ethers.utils.parseEther(amount).div(this.tokenRatio),
+    }).then((tx: ethers.ContractTransaction) => {
+      tx.wait().then((receipt: ethers.ContractReceipt) => {
+        this.getUserTokenBalance();
+      })
+    })   
+  }
+
 }
