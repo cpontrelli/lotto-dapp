@@ -10,7 +10,7 @@
           <h6 class="card-subtitle mb-2 text-muted">{{userAddress}}</h6>
           <p class="card-text">Balance: {{userBalance}} ETH</p>
           <p class="card-text">Token Balance: {{userTokenBalance}} LTO</p>
-          <div *ngIf="!userTokenBalance || userTokenBalance == 0">
+          <div>
             <p>Purchase Tokens:</p>
             <input #valueInput class="input" type="number" min="0" max="10" />
             <br>
@@ -22,6 +22,15 @@
             <br>
             <button class="btn btn-success btn-lg px-4 gap-3" (click)="returnTokens(valueInput.value)">Return</button>
           </div>
+        </div>
+      </div>
+      <div *ngIf="possibleBets && possibleBets >= 0" class="card my-4">
+        <div class="card-body">
+          <h5 class="card-title">Lottery</h5>
+          <p class="card-text">Bet Price: {{betPrice}} LTO</p>
+          <p class="card-text">Bet Fee: {{betFee}} LTO</p>
+          <p *ngIf="betsClosingTime" class="card-text">Bet Closing Time: {{betsClosingTime.toLocaleDateString()}} : {{betsClosingTime.toLocaleTimeString()}}</p>
+          <button class="btn btn-danger btn-lg px-4 gap-3" (click)="bet()">Bet</button>
         </div>
       </div>
     </div>

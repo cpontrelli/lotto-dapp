@@ -31,6 +31,10 @@ export class AppComponent {
   lotteryContractAddress: string | undefined;
   lotteryContract: Contract | undefined;
   tokenRatio: number | undefined;
+  betPrice: number | undefined;
+  betFee: number | undefined;
+  possibleBets: number | undefined;
+  betsClosingTime: Date | undefined;
   
   constructor() {
     this.provider = new ethers.providers.Web3Provider(window.ethereum, 'goerli');
@@ -63,10 +67,7 @@ export class AppComponent {
       lotteryJson.abi,
       this.signer ?? this.provider
     );
-    this.lotteryContract?.['purchaseRatio']().then((tokenRatioBN: BigNumber) => {
-      const tokenRatioStr = tokenRatioBN.toString();
-      this.tokenRatio = parseFloat(tokenRatioStr);
-    });
+    this.getBettingInfo();
   }
 
   clearBlock() {
@@ -102,6 +103,33 @@ export class AppComponent {
     });
   }
 
+  getBettingInfo() {
+    this.lotteryContract?.['purchaseRatio']().then((tokenRatioBN: BigNumber) => {
+      const tokenRatioStr = tokenRatioBN.toString();
+      this.tokenRatio = parseFloat(tokenRatioStr);
+      this.calcPossibleBets();
+    });
+    this.lotteryContract?.['betPrice']().then((betPriceBN: BigNumber) => {
+      const betPriceStr = utils.formatEther(betPriceBN);
+      this.betPrice = parseFloat(betPriceStr);
+      this.calcPossibleBets();
+    });
+    this.lotteryContract?.['betFee']().then((betFeeBN: BigNumber) => {
+      const betFeeStr = utils.formatEther(betFeeBN);
+      this.betFee = parseFloat(betFeeStr);
+      this.calcPossibleBets();
+    });
+    this.lotteryContract?.['betsClosingTime']().then((betsClosingTimeBN: BigNumber) => {
+      this.betsClosingTime = new Date(betsClosingTimeBN.toNumber() * 1000);
+      this.calcPossibleBets();
+    });
+  }
+
+  calcPossibleBets() {
+    if(!this.userTokenBalance || !this.betFee || ! this.betPrice) return;
+    this.possibleBets = Math.floor(this.userTokenBalance / (this.betPrice + this.betFee));
+  }
+
   purchaseTokens(amount: string) {
     const tokens = parseFloat(amount);
     if(Number.isNaN(tokens) || tokens <= 0 || !this.signer || !this.tokenRatio) return;
@@ -109,7 +137,9 @@ export class AppComponent {
       value: ethers.utils.parseEther(amount).div(this.tokenRatio),
     }).then((tx: ethers.ContractTransaction) => {
       tx.wait().then((receipt: ethers.ContractReceipt) => {
+        this.getUserEthBalance();
         this.getUserTokenBalance();
+        this.getBettingInfo();
       });
     });
   }
@@ -118,7 +148,7 @@ export class AppComponent {
     const tokens = parseFloat(amount);
     if(Number.isNaN(tokens) || tokens <= 0 || !this.signer) return;
     this.tokenContract?.connect(this.signer)['approve'](this.lotteryContractAddress, ethers.utils.parseEther(amount))
-      .then(((approveTx: ethers.ContractTransaction) => {
+      .then((approveTx: ethers.ContractTransaction) => {
         approveTx.wait().then((receipt: ethers.ContractReceipt) => {
           if(!this.signer) return;  
           this.lotteryContract?.connect(this.signer)['returnTokens'](ethers.utils.parseEther(amount))
@@ -126,10 +156,33 @@ export class AppComponent {
               returnTx.wait().then((receipt: ethers.ContractReceipt) => {
                 this.getUserEthBalance();
                 this.getUserTokenBalance();
+                this.getBettingInfo();
               });
             });
         });
-      }));  
+      });  
+  }
+
+  bet() {
+    if(!this.signer || !this.betFee || !this.betPrice) return;
+    const price = ethers.utils.parseEther(this.betPrice.toString());
+    const fee = ethers.utils.parseEther(this.betFee.toString());
+    const cost = price.add(fee);
+    // Unsure why using the "cost" variable as the amount in the approve transaction results in an insufficient balance
+    this.tokenContract?.connect(this.signer)['approve'](this.lotteryContractAddress, ethers.constants.MaxUint256)
+      .then((approveTx: ethers.ContractTransaction) => {
+        approveTx.wait().then((receipt: ethers.ContractReceipt) => {
+          if(!this.signer) return;
+          this.lotteryContract?.connect(this.signer)['bet']()
+            .then((betTx: ethers.ContractTransaction) => {
+              betTx.wait().then((receipt: ethers.ContractReceipt) => {
+                this.getUserEthBalance();
+                this.getUserTokenBalance();
+                this.getBettingInfo();
+              });
+            });
+        });
+      });
   }
 
 }
